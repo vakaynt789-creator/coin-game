@@ -33,10 +33,27 @@ function verifyInitData(initData) {
 
 // Пароль для доступа к админ-панели. Задай свой — замени строку ниже.
 // Если оставить 'admin', игроки, знающие /admin.html, смогут войти.
+// (пароль больше не используется — авторизация по Telegram ID)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin2026';
-// Простой токен сессии (выдаётся после ввода правильного пароля)
+
+// Telegram ID, которым разрешён доступ к админ-панели (по данным Mini App).
+const ALLOWED_ADMIN_IDS = (process.env.ALLOWED_ADMIN_IDS || '1497464101').split(',').map(s => s.trim()).filter(Boolean);
+
+// Вспомогательная функция: прочитать telegram_id из проверенных initData
+function tgIdFromInitData(initData) {
+  if (!verifyInitData(initData)) return null;
+  try {
+    const params = new URLSearchParams(initData);
+    const userRaw = params.get('user');
+    if (!userRaw) return null;
+    const user = JSON.parse(userRaw);
+    return String(user.id);
+  } catch (e) { return null; }
+}
+
+// Простой токен сессии (выдаётся после проверки Telegram ID)
 function makeAdminToken() { return crypto.randomBytes(24).toString('hex'); }
-let adminToken = null; // активируется при логине
+let adminToken = null; // активируется при успешной авторизации
 
 // Деньги храним целым числом в единицах 1e-8 (8 знаков после запятой).
 // 0.00000003  ->  3 единицы
@@ -158,15 +175,15 @@ function readBody(req, limit = 10000) {
 
 // ================= АПИ =================
 async function handleApi(req, res, url) {
-  // Админ-авторизация: проверка пароля -> выдаём токен
+  // Админ-авторизация: проверка Telegram ID (из initData Mini App) -> выдаём токен
   if (url.pathname === '/api/admin/login' && req.method === 'POST') {
     const body = await readBody(req);
-    const pwd = String(body.password || '');
-    if (pwd === ADMIN_PASSWORD) {
+    const tid = tgIdFromInitData(body.initData);
+    if (tid && ALLOWED_ADMIN_IDS.includes(String(tid))) {
       adminToken = makeAdminToken();
       return sendJson(res, 200, { ok: true, token: adminToken });
     }
-    return sendJson(res, 401, { error: 'Неверный пароль' });
+    return sendJson(res, 403, { error: 'Доступ запрещён: ты не в списке администраторов' });
   }
 
   // Все остальные /api/admin/* требуют валидный токен
@@ -370,14 +387,6 @@ async function handleAdmin(res, url, req) {
 
 // ================= Статика =================
 function serveStatic(req, res, url) {
-  // Защита панели: админка доступна только по секретной ссылке с токеном
-  if (url.pathname === '/admin.html') {
-    const t = url.searchParams.get('token');
-    if (!adminToken || t !== adminToken) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end(LOGIN_PAGE);
-    }
-  }
   let filePath = path.join(PUBLIC_DIR, url.pathname === '/' ? 'index.html' : url.pathname);
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403); return res.end('Forbidden');
@@ -406,48 +415,6 @@ function serveStatic(req, res, url) {
     res.end(data);
   });
 }
-
-// Страница входа в админ-панель (без токена в URL)
-const LOGIN_PAGE = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Вход в панель</title>
-<style>
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1420;color:#eef2f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
-  .box{background:#1a2130;border:1px solid #2e3a4e;border-radius:14px;padding:28px;max-width:340px;width:100%;text-align:center}
-  h1{font-size:18px;margin-bottom:16px}
-  input{width:100%;background:#232c3d;border:1px solid #2e3a4e;border-radius:8px;padding:12px;color:#eef2f8;font-size:15px;margin-bottom:12px;box-sizing:border-box}
-  button{width:100%;background:#5b8cff;border:none;border-radius:8px;padding:13px;color:#07121f;font-weight:700;font-size:15px;cursor:pointer}
-  button:hover{filter:brightness(1.1)}
-  .err{color:#f87171;font-size:13px;margin-top:10px;min-height:18px}
-</style>
-</head>
-<body>
-  <div class="box">
-    <h1>🛠 Вход в панель</h1>
-    <input type="password" id="pwd" placeholder="Пароль">
-    <button id="go">Войти</button>
-    <div class="err" id="err"></div>
-  </div>
-  <script>
-    const pwd=document.getElementById('pwd'),btn=document.getElementById('go'),err=document.getElementById('err');
-    async function login(){
-      err.textContent='';
-      const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd.value})});
-      const j=await r.json().catch(()=>({}));
-      if(j.ok && j.token){
-        location.href='/admin.html?token='+encodeURIComponent(j.token);
-      } else {
-        err.textContent=j.error||'Неверный пароль';
-      }
-    }
-    btn.onclick=login;
-    pwd.addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
-  </script>
-</body>
-</html>`;
 
 // ================= Сервер =================
 const server = http.createServer(async (req, res) => {
