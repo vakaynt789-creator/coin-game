@@ -8,6 +8,29 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_FILE = path.join(__dirname, 'data.json');
 
+// Токен бота Telegram (для проверки подписи initData Mini App)
+const BOT_TOKEN = process.env.BOT_TOKEN || '9083407614:AAGMaFxAt4l8vqsgG_zg_peGc8PytvGZ-Sc';
+
+// Проверяет подпись initData от Telegram Mini App по алгоритму:
+// secret = HMAC_SHA256("WebAppData", bot_token)
+// hash   = HMAC_SHA256(secret, data_check_string)
+function verifyInitData(initData) {
+  if (!initData || typeof initData !== 'string') return false;
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
+  if (!hash) return false;
+  const checkArr = [];
+  params.forEach((v, k) => { if (k !== 'hash') checkArr.push(k + '=' + v); });
+  const dataCheckString = checkArr.sort().join('\n');
+  const secretKey = crypto.createHmac('sha256', 'WebAppData')
+    .update(BOT_TOKEN)
+    .digest();
+  const calcHash = crypto.createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex');
+  return calcHash === hash;
+}
+
 // Пароль для доступа к админ-панели. Задай свой — замени строку ниже.
 // Если оставить 'admin', игроки, знающие /admin.html, смогут войти.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin2026';
@@ -163,6 +186,10 @@ async function handleApi(req, res, url) {
     const tgId = String(body.telegram_id || '').trim().slice(0, 40);
     const nick = String(body.nick || 'Игрок').trim().slice(0, 24) || 'Игрок';
     if (!tgId) return sendJson(res, 400, { error: 'Нет данных Telegram' });
+    // проверяем подпись initData (передаётся с клиента Mini App)
+    if (!verifyInitData(body.initData)) {
+      return sendJson(res, 401, { error: 'Недействительные данные Telegram' });
+    }
 
     // ищем игрока по telegram_id в nick или отдельном поле
     let player = Object.values(db.players).find(p => p.tgId === tgId);
