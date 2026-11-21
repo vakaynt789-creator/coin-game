@@ -438,7 +438,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log('=========================================');
-  console.log('  FG_coиn$ — сервер запущен');
+  console.log('  FG_coin$ — сервер запущен');
   console.log(`  Откройте игру:  http://localhost:${PORT}`);
   console.log(`  Панель кодов:   http://localhost:${PORT}/admin.html`);
   console.log('-----------------------------------------');
