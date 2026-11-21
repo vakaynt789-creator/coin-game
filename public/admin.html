@@ -99,17 +99,23 @@
 </div>
 
 <script>
-const API='/admin';
+const API='/api/admin';
 let token = localStorage.getItem('admin_token') || '';
 let filter='all';
 let codes=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// Авторизация через Telegram Mini App: сервер проверяет твой Telegram ID
+// Авторизация: либо рабочий сохранённый токен, либо проверка Telegram ID через Mini App
 async function adminAuth() {
+  // 1) пробуем сохранённый токен — если API его принимает, пускаем
+  if (token) {
+    const probe = await fetch(API + '/codes', { headers: { 'Authorization':'Bearer '+token } });
+    if (probe.status === 200) return null;
+  }
+  // 2) иначе — только через Telegram Mini App (сервер сверяет твой Telegram ID)
   const tg = window.Telegram && window.Telegram.WebApp;
-  if (!tg) { return '/admin.html'; } // вне Telegram — вернёт на обычную страницу (доступа нет)
+  if (!tg) { return '/admin.html'; }
   const initData = tg.initData || '';
   if (!initData) return '/admin.html';
   const res = await fetch(API + '/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData }) });
