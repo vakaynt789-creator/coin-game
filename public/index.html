@@ -411,7 +411,8 @@ $('logoutLink').addEventListener('click', (e)=>{
       const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
       if (u && u.id) {
         const nick = (u.first_name || u.username || 'Игрок');
-        const tdata = await api('/login-tg', { method:'POST', body: JSON.stringify({ telegram_id: String(u.id), nick }) });
+        // передаём серверу полный initData (с hash) — сервер проверяет подпись
+        const tdata = await api('/login-tg', { method:'POST', body: JSON.stringify({ telegram_id: String(u.id), nick, initData: tg.initData }) });
         if (tdata.player) {
           me = tdata.player;
           saveSession(tdata.code);
