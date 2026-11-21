@@ -202,6 +202,7 @@ function enterOffline(nick) {
   $('myCode').textContent = me.code;
   renderBalance();
   renderBoost();
+  startFlushLoop();
 }
 
 function localKey(code, what){ return 'tap_' + code + '_' + what; }
@@ -226,6 +227,7 @@ function enterGame(balanceStr, code, status, serverBoost) {
     $('gameError').textContent = 'Этот код получил приз и заблокирован. Тапы недоступны.';
   }
   // онлайн-режим: начинаем опрашивать сервер, чтобы видеть буст/тапы из админки
+  startFlushLoop();
   startPolling();
 }
 
@@ -255,58 +257,68 @@ function saveSession(code) { localStorage.setItem('tap_code', code); }
 function loadSession() { return localStorage.getItem('tap_code'); }
 
 // ================= Тап =================
-let tapping = false;
 let activePointers = new Set();
 
-// общий шаг тапа для одного указателя
-async function doTap() {
-  if (!me || tapping) return;
-  tapping = true;
+// накопительные тапы: баланс растёт мгновенно, на сервер уходят пачками
+let pendingTaps = 0;        // сколько тапов накопилось с последней отправки
+let flushTimer = null;      // таймер регулярной отправки пачки
+let syncing = false;        // защита от параллельных отправок
+const FLUSH_MS = 1200;      // отправлять пачку каждые 1.2 сек
 
-  // оптимистично увеличиваем + показываем всплывашку
+// мгновенный локальный тап: добавляет к балансу и к очереди отправки
+function tapLocal() {
   const gain = tapGain();
   currentUnits += gain;
-  const before = displayBalance;
+  pendingTaps++;
   displayBalance = fmt(currentUnits);
   renderBalance();
   spawnFloating('+' + fmt(gain));
+}
+
+// отправка накопленных тапов пачкой (без блокировки интерфейса)
+async function flushTaps() {
+  if (pendingTaps <= 0 || syncing) return;
+  syncing = true;
+  const count = pendingTaps;
+  pendingTaps = 0;
 
   if (offline) {
     // офлайн: сохраняем локально
-    const taps = loadLocalTap(me.code) + 1;
+    const taps = loadLocalTap(me.code) + count;
     saveLocalUnits(me.code, currentUnits);
     localStorage.setItem(localKey(me.code,'taps'), taps);
-    tapping = false;
+    syncing = false;
     return;
   }
 
-  // серверный запрос тапа
-  const data = await api('/tap', { method:'POST', body: JSON.stringify({ code: me.code }) });
+  const data = await api('/tap', { method:'POST', body: JSON.stringify({ code: me.code, count }) });
   if (!data || data.error === '__offline__') {
-    // сервер отвалился по ходу игры — переходим в офлайн и сохраняем набег
+    // сервер отвалился — переходим в офлайн и сохраняем набег
     offline = true;
-    const taps = loadLocalTap(me.code) + 1;
+    const taps = loadLocalTap(me.code) + count;
     saveLocalUnits(me.code, currentUnits);
     localStorage.setItem(localKey(me.code,'taps'), taps);
   } else if (data.error) {
-    // откатываем
-    currentUnits -= gain;
-    displayBalance = before;
+    // ошибка сервера: возвращаем count тапов обратно в очередь
+    pendingTaps += count;
+    currentUnits -= tapGain() * count;
+    displayBalance = fmt(currentUnits);
     renderBalance();
     if (data.error.includes('блокирован')) {
       disableGame(true);
       $('gameError').textContent = data.error;
     }
   } else {
+    // сверяем локальный баланс с сервером (сервер точнее)
     currentUnits = Math.round(parseFloat(data.balance) / UNIT);
     displayBalance = fmt(currentUnits);
     renderBalance();
     if (data.boost) applyBoost(Number(data.boost), data.gain);
   }
-  tapping = false;
+  syncing = false;
 }
 
-// мультитач: каждый палец = отдельный тап
+// мультитач: каждый палец = отдельный тап, мгновенно
 const coin = $('coin');
 coin.addEventListener('pointerdown', (e) => {
   if (!me) return;
@@ -314,7 +326,7 @@ coin.addEventListener('pointerdown', (e) => {
   coin.setPointerCapture(e.pointerId);
   if (activePointers.has(e.pointerId)) return;
   activePointers.add(e.pointerId);
-  doTap();
+  tapLocal();
 });
 coin.addEventListener('pointerup', (e) => { activePointers.delete(e.pointerId); });
 coin.addEventListener('pointercancel', (e) => { activePointers.delete(e.pointerId); });
@@ -325,13 +337,20 @@ coin.addEventListener('contextmenu', (e) => e.preventDefault());
 if (!window.PointerEvent) {
   coin.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    for (let i = 0; i < e.changedTouches.length; i++) doTap();
+    for (let i = 0; i < e.changedTouches.length; i++) tapLocal();
   }, { passive: false });
   coin.addEventListener('click', (e) => {
     if (e.touches) return;
-    doTap();
+    tapLocal();
   });
 }
+
+// регулярная отправка пачки и последний сброс при уходе со страницы
+function startFlushLoop() {
+  if (flushTimer) clearInterval(flushTimer);
+  flushTimer = setInterval(flushTaps, FLUSH_MS);
+}
+window.addEventListener('beforeunload', () => { if (pendingTaps > 0) flushTaps(); });
 
 function disableGame(on) {
   $('coin').style.pointerEvents = on ? 'none' : 'auto';
