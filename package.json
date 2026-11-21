@@ -1,0 +1,14 @@
+{
+  "name": "coin-game",
+  "version": "1.0.0",
+  "description": "Coin game — кликер-тапалка с виртуальным балансом и системой кодов",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

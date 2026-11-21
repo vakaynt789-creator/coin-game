@@ -1,0 +1,75 @@
+{
+    "players":  {
+                    "TR2ZCMN8KYBSH45WXZ":  {
+                                               "code":  "TR2ZCMN8KYBSH45WXZ",
+                                               "nick":  "?????????",
+                                               "balance":  3,
+                                               "taps":  1,
+                                               "createdAt":  "2026-11-20T20:22:32.392Z",
+                                               "lastSeen":  "2026-11-20T20:22:32.559Z"
+                                           },
+                    "CLENNN5SK5GRAXNHDY":  {
+                                               "code":  "CLENNN5SK5GRAXNHDY",
+                                               "nick":  "Р Р†Р С”1",
+                                               "balance":  168,
+                                               "taps":  56,
+                                               "createdAt":  "2026-11-20T20:32:28.116Z",
+                                               "lastSeen":  "2026-11-20T20:32:44.774Z"
+                                           },
+                    "WLWL6DFZ5CDNBUADZW":  {
+                                               "code":  "WLWL6DFZ5CDNBUADZW",
+                                               "nick":  "TestPlayer",
+                                               "balance":  3,
+                                               "taps":  1,
+                                               "createdAt":  "2026-11-20T20:36:20.819Z",
+                                               "lastSeen":  "2026-11-20T20:36:35.893Z"
+                                           },
+                    "U2ATH7VFGL7P2KMJZD":  {
+                                               "code":  "U2ATH7VFGL7P2KMJZD",
+                                               "nick":  "Friend994",
+                                               "balance":  9,
+                                               "taps":  150,
+                                               "boost":  5,
+                                               "createdAt":  "2026-11-20T20:51:37.394Z",
+                                               "lastSeen":  "2026-11-20T20:51:37.418Z"
+                                           },
+                    "5W9N5KNYKBCDUGPYBT":  {
+                                               "code":  "5W9N5KNYKBCDUGPYBT",
+                                               "nick":  "Verni851",
+                                               "balance":  0,
+                                               "taps":  0,
+                                               "boost":  1,
+                                               "createdAt":  "2026-11-20T21:07:54.218Z",
+                                               "lastSeen":  "2026-11-20T21:07:54.218Z"
+                                           },
+                    "WK4GFNHRFHR4TQ6UYE":  {
+                                               "code":  "WK4GFNHRFHR4TQ6UYE",
+                                               "nick":  "BrowserCheck1",
+                                               "balance":  3,
+                                               "taps":  1,
+                                               "boost":  1,
+                                               "createdAt":  "2026-11-20T21:09:09.385Z",
+                                               "lastSeen":  "2026-11-20T23:04:35.801Z"
+                                           },
+                    "D24CYS6XAKLX6TJGXC":  {
+                                               "code":  "D24CYS6XAKLX6TJGXC",
+                                               "nick":  "On769",
+                                               "balance":  0,
+                                               "taps":  0,
+                                               "boost":  1,
+                                               "createdAt":  "2026-11-20T21:32:34.121Z",
+                                               "lastSeen":  "2026-11-20T21:32:34.121Z"
+                                           }
+                },
+    "codes":  {
+                  "TR2ZCMN8KYBSH45WXZ":  "playing",
+                  "CLENNN5SK5GRAXNHDY":  "playing",
+                  "WLWL6DFZ5CDNBUADZW":  "playing",
+                  "U2ATH7VFGL7P2KMJZD":  "playing",
+                  "5W9N5KNYKBCDUGPYBT":  "playing",
+                  "WK4GFNHRFHR4TQ6UYE":  "playing",
+                  "D24CYS6XAKLX6TJGXC":  "playing"
+              },
+    "adminKey":  "7dda4e66f0a32116",
+    "adminCode":  "NEWFG2026"
+}

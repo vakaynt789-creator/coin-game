@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FG_coиn$</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#1a2130; --panel2:#232c3d; --line:#2e3a4e;
+    --text:#eef2f8; --muted:#93a1b5; --accent:#5b8cff; --accent2:#34d399;
+    --red:#f87171; --gold:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  h1{font-size:20px;margin-bottom:4px;text-align:center}
+  .sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px}
+
+  .balanceBox{text-align:center;margin-bottom:8px}
+  .balanceTitle{color:var(--muted);font-size:13px;letter-spacing:.5px;text-transform:uppercase}
+  .balance{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent2);margin-top:2px;word-break:break-word}
+  
+
+  .coinWrap{display:flex;justify-content:center;margin:14px 0 16px}
+  #coin{
+    width:200px;height:200px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ffe373, #f59e0b 60%, #b45309);
+    color:#3a2a00;font-weight:800;font-size:64px;display:flex;align-items:center;justify-content:center;
+    border:8px solid #fbbf24;box-shadow:0 8px 24px rgba(245,158,11,.35), inset 0 -6px 12px rgba(0,0,0,.25);
+    user-select:none;cursor:pointer;font-family:inherit;touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
+    outline:none;
+  }
+  /* убираем синюю тач-подсветку и выделение по всей странице при касании */
+  *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+  body{-webkit-tap-highlight-color:transparent}
+  /* кнопка статичная: без уменьшения при нажатии, без pop-анимации */
+  .coinLabel{text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px}
+
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--text);font-size:15px}
+  button{width:100%;background:var(--accent);border:none;border-radius:10px;padding:13px;color:#07121f;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px}
+  button:hover{filter:brightness(1.1)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+
+  .codeBox{margin-top:20px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+  .codeBox .t{color:var(--muted);font-size:12px;margin-bottom:8px}
+  .codeBox .code{font-size:17px;font-weight:700;letter-spacing:2px;font-family:ui-monospace,consolas,monospace;color:var(--gold);word-break:break-all;margin-bottom:10px}
+  .codeBox button{background:var(--panel2);border:1px solid var(--line);color:var(--accent);padding:8px;font-size:14px;margin:0}
+  .copyOk{color:var(--accent2);font-size:13px;margin-top:8px;display:none}
+  .note{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;line-height:1.5}
+  .error{color:var(--red);font-size:14px;text-align:center;margin-top:10px}
+  .linkTop{text-align:right;margin-bottom:8px;font-size:13px}
+  .linkTop a{color:var(--accent);text-decoration:none}
+
+  #gameScreen{display:none}
+  #loginScreen{display:block}
+  .logoBox{text-align:center;margin-bottom:10px}
+  .logoBox img{max-width:110px;max-height:110px;border-radius:50%;object-fit:cover;box-shadow:0 4px 18px rgba(91,140,255,.4)}
+  .coinTaps{position:fixed;pointer-events:none;font-weight:700;color:var(--accent2);z-index:10}
+  .tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--panel2);border-radius:10px;padding:4px}
+  .tabs button{flex:1;background:transparent;border:none;color:var(--muted);padding:10px;font-size:14px;border-radius:8px;cursor:pointer}
+  .tabs button.active{background:var(--accent);color:#07121f;font-weight:700}
+  .showRegister{animation:pop .25s}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    /* адаптация под Telegram Mini App */
+    body.tga{background:var(--bg);padding-bottom:env(safe-area-inset-bottom)}
+  </style>
+</head>
+<body>
+  <!-- Логин / регистрация -->
+  <div class="card" id="loginScreen">
+    <div class="logoBox"><img id="loginLogo" src="logo.png" alt="логотип" onerror="this.style.display='none'"></div>
+    <h1 id="loginTitle">🪙 FG_coиn$</h1>
+    <div class="sub" id="loginSub">Введи ник — и получи свой личный код входа</div>
+
+    <div class="field">
+      <label>Твой ник</label>
+      <input id="loginNick" type="text" maxlength="24" placeholder="Например, Player1">
+    </div>
+    <button id="loginBtn">Войти / Создать аккаунт</button>
+
+    <div id="loginError" class="error"></div>
+    <div class="note" id="loginNote">Каждому игроку выдаётся 18-значный код из латиницы и цифр. Сохрани его — это твой вход в игру.</div>
+  </div>
+
+  <!-- Игра -->
+  <div class="card" id="gameScreen">
+    <div class="linkTop"><a href="#" id="logoutLink">Выйти ▸</a></div>
+    <div class="logoBox"><img id="gameLogo" src="logo.png" alt="логотип" onerror="this.style.display='none'"></div>
+    <h1 id="gameTitle">🪙 FG_coиn$</h1>
+    <div class="sub">Игрок: <span id="nickLabel"></span></div>
+
+    <div class="balanceBox">
+      <div class="balanceTitle">Баланс</div>
+      <div class="balance" id="balance">0.00000000</div>
+    </div>
+
+    <div class="coinWrap"><div id="coin">🪙</div></div>
+    <div class="coinLabel" id="boostLabel" style="display:none;margin-bottom:8px"></div>
+    <div class="coinLabel">Тапай по монете!</div>
+
+    <div class="codeBox">
+      <div class="t">Твой 18-значный код входа</div>
+      <div class="code" id="myCode">—</div>
+      <button id="copyBtn">Копировать код</button>
+      <div class="copyOk" id="copyOk">✓ Скопировано</div>
+    </div>
+
+    <div class="note">
+      Этот баланс виртуальный. Это игра, а не реальная криптовалюта.
+    </div>
+    <div id="gameError" class="error"></div>
+  </div>
+
+<script>
+const API = '/api';
+let me = null; // {code, nick, balance(tap state)}
+const BALANCE_RE = /^\d+\.\d{8}$/;
+
+const $ = id => document.getElementById(id);
+
+// ================= Формат баланса =================
+let currentUnits = 0;       // баланс в единицах (внутреннее)
+let displayBalance = '0.00000000';
+const UNIT = 1e-8;
+const TAP = 3;              // 3 единицы = 0.00000003
+let boost = 1;              // множитель дохода (x1, x1.5, x2, x3, x5)
+
+function tapGain() { return Math.round(TAP * boost); }
+
+async function api(path, opts={}) {
+  let res;
+  try {
+    res = await fetch(API + path, {
+      headers: {'Content-Type': 'application/json'},
+      ...opts
+    });
+  } catch(e) {
+    // сервер недоступен (например, файл открыт напрямую file://) -> офлайн-режим
+    return { error: '__offline__' };
+  }
+  try {
+    return await res.json();
+  } catch(e) {
+    // ответ не JSON -> сервер/маршрут не существует -> офлайн-режим
+    return { error: '__offline__' };
+  }
+}
+
+// ================= Логин / Регистрация =================
+let offline = false; // true, если сервер недоступен (file:// режим)
+
+async function login() {
+  const nick = $('loginNick').value.trim();
+  if (!nick) { $('loginError').textContent = 'Введи ник'; return; }
+  const data = await api('/login', { method:'POST', body: JSON.stringify({ nick }) });
+  if (data.error === '__offline__') { enterOffline(nick); return; }
+  if (data.error) { $('loginError').textContent = data.error; return; }
+  me = data.player;
+  boost = 1;
+  enterGame(data.balance, data.code, data.status, data.boost);
+  // запоминаем код для авто-входа в этом браузере
+  saveSession(data.code);
+}
+
+// офлайн-режим: работаем только через localStorage
+// локальная генерация 18-значного кода (офлайн) — на основе нику + счётчика
+function makeLocalCode(seed) {
+  const S = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let h = 2166136261; // FNV-1a
+  const mix = seed + '::' + Date.now() + '::' + Math.random();
+  for (let i = 0; i < mix.length; i++) {
+    h ^= mix.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  let code = '';
+  for (let i = 0; i < 18; i++) {
+    h = Math.imul(h ^ (h >>> 13), 0x5bd1e995) >>> 0;
+    h = (h ^ (h >>> 15)) >>> 0;
+    code += S[h % S.length];
+  }
+  return code;
+}
+
+function enterOffline(nick) {
+  offline = true;
+  const code = makeLocalCode(nick);
+  boost = Number(localStorage.getItem(localKey(code,'boost'))) || 1;
+  me = { nick, code, boost };
+  currentUnits = loadLocalUnits(me.code);
+  displayBalance = fmt(currentUnits);
+  localStorage.setItem('tap_nick_' + me.code, nick);
+  $('loginScreen').style.display = 'none';
+  $('gameScreen').style.display = 'block';
+  $('nickLabel').textContent = me.nick;
+  $('myCode').textContent = me.code;
+  renderBalance();
+  renderBoost();
+}
+
+function localKey(code, what){ return 'tap_' + code + '_' + what; }
+function loadLocalUnits(code){ return Math.floor(Number(localStorage.getItem(localKey(code,'units')))||0); }
+function saveLocalUnits(code,u){ localStorage.setItem(localKey(code,'units'), u); }
+function loadLocalTap(code){ return Number(localStorage.getItem(localKey(code,'taps')))||0; }
+
+function enterGame(balanceStr, code, status, serverBoost) {
+  $('loginScreen').style.display = 'none';
+  $('gameScreen').style.display = 'block';
+  $('nickLabel').textContent = me.nick;
+  $('myCode').textContent = code || me.code;
+  currentUnits = Math.round(parseFloat(balanceStr || '0') / UNIT);
+  displayBalance = fmt(currentUnits);
+  boost = Number(serverBoost) || 1;
+  me.boost = boost;
+  renderBalance();
+  renderBoost();
+  if (status === 'prize') {
+    // код в чёрном списке — блокируем тапы
+    disableGame(true);
+    $('gameError').textContent = 'Этот код получил приз и заблокирован. Тапы недоступны.';
+  }
+  // онлайн-режим: начинаем опрашивать сервер, чтобы видеть буст/тапы из админки
+  startPolling();
+}
+
+function renderBoost() {
+  const lbl = $('boostLabel');
+  if (boost && boost > 1) {
+    lbl.style.display = 'block';
+    lbl.textContent = 'Буст x' + (boost % 1 ? boost : Math.round(boost));
+  } else {
+    lbl.style.display = 'none';
+  }
+}
+
+function applyBoost(newBoost, gainStr) {
+  boost = Number(newBoost) || 1;
+  me.boost = boost;
+  renderBoost();
+}
+
+function fmt(units) { return (units * UNIT).toFixed(8); }
+function renderBalance() {
+  $('balance').textContent = displayBalance;
+}
+
+// ================= Сессия в localStorage =================
+function saveSession(code) { localStorage.setItem('tap_code', code); }
+function loadSession() { return localStorage.getItem('tap_code'); }
+
+// ================= Тап =================
+let tapping = false;
+let activePointers = new Set();
+
+// общий шаг тапа для одного указателя
+async function doTap() {
+  if (!me || tapping) return;
+  tapping = true;
+
+  // оптимистично увеличиваем + показываем всплывашку
+  const gain = tapGain();
+  currentUnits += gain;
+  const before = displayBalance;
+  displayBalance = fmt(currentUnits);
+  renderBalance();
+  spawnFloating('+' + fmt(gain));
+
+  if (offline) {
+    // офлайн: сохраняем локально
+    const taps = loadLocalTap(me.code) + 1;
+    saveLocalUnits(me.code, currentUnits);
+    localStorage.setItem(localKey(me.code,'taps'), taps);
+    tapping = false;
+    return;
+  }
+
+  // серверный запрос тапа
+  const data = await api('/tap', { method:'POST', body: JSON.stringify({ code: me.code }) });
+  if (!data || data.error === '__offline__') {
+    // сервер отвалился по ходу игры — переходим в офлайн и сохраняем набег
+    offline = true;
+    const taps = loadLocalTap(me.code) + 1;
+    saveLocalUnits(me.code, currentUnits);
+    localStorage.setItem(localKey(me.code,'taps'), taps);
+  } else if (data.error) {
+    // откатываем
+    currentUnits -= gain;
+    displayBalance = before;
+    renderBalance();
+    if (data.error.includes('блокирован')) {
+      disableGame(true);
+      $('gameError').textContent = data.error;
+    }
+  } else {
+    currentUnits = Math.round(parseFloat(data.balance) / UNIT);
+    displayBalance = fmt(currentUnits);
+    renderBalance();
+    if (data.boost) applyBoost(Number(data.boost), data.gain);
+  }
+  tapping = false;
+}
+
+// мультитач: каждый палец = отдельный тап
+const coin = $('coin');
+coin.addEventListener('pointerdown', (e) => {
+  if (!me) return;
+  e.preventDefault();
+  coin.setPointerCapture(e.pointerId);
+  if (activePointers.has(e.pointerId)) return;
+  activePointers.add(e.pointerId);
+  doTap();
+});
+coin.addEventListener('pointerup', (e) => { activePointers.delete(e.pointerId); });
+coin.addEventListener('pointercancel', (e) => { activePointers.delete(e.pointerId); });
+// предотвращаем контекстное меню/скролл на мобильных
+coin.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// фолбэк на старых устройствах, где нет Pointer Events
+if (!window.PointerEvent) {
+  coin.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) doTap();
+  }, { passive: false });
+  coin.addEventListener('click', (e) => {
+    if (e.touches) return;
+    doTap();
+  });
+}
+
+function disableGame(on) {
+  $('coin').style.pointerEvents = on ? 'none' : 'auto';
+  $('coin').style.opacity = on ? '.4' : '1';
+}
+
+// плавающие "+0.00000003"
+function spawnFloating(text) {
+  const el = document.createElement('div');
+  el.className = 'coinTaps';
+  el.textContent = text;
+  el.style.left = (Math.random()*60+15) + '%';
+  el.style.top = '35%';
+  document.body.appendChild(el);
+  let y = 0;
+  const iv = setInterval(()=>{
+    y-=2; el.style.top = (parseFloat(el.style.top)-2)+'%';
+    el.style.opacity = Math.max(0, 1 - y/80);
+    if (y<=-80) { clearInterval(iv); el.remove(); }
+  },30);
+}
+
+// ================= Копирование кода =================
+$('copyBtn').addEventListener('click', async () => {
+  const code = $('myCode').textContent;
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = code; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  $('copyOk').style.display='block';
+  setTimeout(()=>$('copyOk').style.display='none',1500);
+});
+
+// ================= Опрос сервера (живые изменения из админки) =================
+let pollTimer = null;
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  // каждые 3 секунды проверяем буст, число тапов и статус на сервере
+  pollTimer = setInterval(async () => {
+    if (!me || offline) return;
+    const data = await api('/player?code=' + encodeURIComponent(me.code));
+    if (data.error === '__offline__') return; // переключимся при следующем тапе
+    if (data.error) return;
+    // применяем свежий буст
+    if (data.boost && Number(data.boost) !== boost) {
+      boost = Number(data.boost);
+      me.boost = boost;
+      renderBoost();
+    }
+    // если статус стал заблокированным
+    if (data.status === 'prize') {
+      disableGame(true);
+      $('gameError').textContent = 'Код получил приз и заблокирован. Тапы недоступны.';
+    }
+  }, 3000);
+}
+
+// ================= Автовход / выход =================
+$('logoutLink').addEventListener('click', (e)=>{
+  e.preventDefault();
+  if (pollTimer) clearInterval(pollTimer);
+  localStorage.removeItem('tap_code');
+  location.reload();
+});
+
+(async function init(){
+  // ===== Автовход по Telegram (Mini App) =====
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    try {
+      document.body.classList.add('tga');
+      tg.ready();
+      tg.expand();
+      const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+      if (u && u.id) {
+        const nick = (u.first_name || u.username || 'Игрок');
+        const tdata = await api('/login-tg', { method:'POST', body: JSON.stringify({ telegram_id: String(u.id), nick }) });
+        if (tdata.player) {
+          me = tdata.player;
+          saveSession(tdata.code);
+          enterGame(tdata.balance, tdata.code, tdata.status, tdata.boost);
+          return;
+        }
+      }
+    } catch(e) { /* падаем на обычный вход */ }
+  }
+
+  // авто-вход, если есть сохранённый код
+  const saved = loadSession();
+  if (saved) {
+    const data = await api('/player?code=' + encodeURIComponent(saved));
+    if (data.error === '__offline__') {
+      // сервер недоступен — офлайн-режим с локальным балансом
+      offline = true;
+      const nick = localStorage.getItem('tap_nick_' + saved) || 'Игрок';
+      boost = Number(localStorage.getItem(localKey(saved,'boost'))) || 1;
+      me = { nick, code: saved, boost };
+      currentUnits = loadLocalUnits(saved);
+      displayBalance = fmt(currentUnits);
+      $('loginScreen').style.display = 'none';
+      $('gameScreen').style.display = 'block';
+      $('nickLabel').textContent = nick;
+      $('myCode').textContent = saved;
+      renderBalance();
+      renderBoost();
+      return;
+    }
+    if (data.player) {
+      me = data.player;
+      enterGame(data.balance, data.player.code, data.status, data.boost);
+      return;
+    } else {
+      localStorage.removeItem('tap_code');
+    }
+  }
+  $('loginBtn').addEventListener('click', login);
+  $('loginNick').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
+})();
+</script>
+</body>
+</html>
