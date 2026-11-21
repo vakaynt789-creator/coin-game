@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Панель кодов — FG_coиn$</title>
+<title>Панель кодов — FG_coin$</title>
 <style>
   :root{--bg:#0f1420;--panel:#1a2130;--panel2:#232c3d;--line:#2e3a4e;--text:#eef2f8;--muted:#93a1b5;--accent:#5b8cff;--accent2:#34d399;--red:#f87171;--gold:#fbbf24}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -50,6 +50,11 @@
   .statCard .k{font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
   .statCard.green .n{color:var(--accent2)}
   .statCard.red .n{color:var(--red)}
+  .statCard.blue .n{color:#8ab4ff}
+  .onlineList{display:flex;flex-wrap:wrap;gap:8px}
+  .onlineList .pl{display:inline-flex;align-items:center;gap:8px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);color:#9be0bd;padding:7px 14px;border-radius:20px;font-size:13px}
+  .onlineList .pl .dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399}
+  .onlineList .pl .cd{color:#8ab4ff;font-family:ui-monospace,consolas,monospace;letter-spacing:.5px}
 </style>
 </head>
 <body>
@@ -63,6 +68,12 @@
       <div class="statCard"><div class="k">Всего игроков</div><div class="n" id="statTotal">0</div></div>
       <div class="statCard green"><div class="k">Играют</div><div class="n" id="statPlaying">0</div></div>
       <div class="statCard red"><div class="k">Чёрный список</div><div class="n" id="statPrize">0</div></div>
+      <div class="statCard blue"><div class="k">Сейчас играют</div><div class="n" id="statOnline">0</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>🟢 Кто сейчас играет</h2>
+      <div id="onlineList" class="onlineList"><div class="empty">Сейчас никто не в сети</div></div>
     </div>
 
     <div class="panel">
@@ -118,6 +129,17 @@ function renderStats(){
   $('statTotal').textContent=codes.length;
   $('statPlaying').textContent=codes.filter(c=>c.status==='playing').length;
   $('statPrize').textContent=codes.filter(c=>c.status==='prize').length;
+  // кто сейчас играет (онлайн)
+  const online = codes.filter(c=>c.online);
+  $('statOnline').textContent = online.length;
+  const ol=$('onlineList');
+  if(online.length===0){
+    ol.innerHTML='<div class="empty">Сейчас никто не в сети</div>';
+    return;
+  }
+  ol.innerHTML = online.map(c=>
+    `<span class="pl"><span class="dot"></span>${esc(c.nick)} <span class="cd">${esc(c.code)}</span></span>`
+  ).join('');
 }
 
 // формат "когда играл/играет": онлайн или относительное время
