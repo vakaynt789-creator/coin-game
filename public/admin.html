@@ -56,7 +56,6 @@
   .onlineList .pl .dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399}
   .onlineList .pl .cd{color:#8ab4ff;font-family:ui-monospace,consolas,monospace;letter-spacing:.5px}
 </style>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -100,38 +99,16 @@
 
 <script>
 const API='/api/admin';
-let token = localStorage.getItem('admin_token') || '';
 let filter='all';
 let codes=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// Авторизация: либо рабочий сохранённый токен, либо проверка Telegram ID через Mini App
-async function adminAuth() {
-  // 1) пробуем сохранённый токен — если API его принимает, пускаем
-  if (token) {
-    const probe = await fetch(API + '/codes', { headers: { 'Authorization':'Bearer '+token } });
-    if (probe.status === 200) return null;
-  }
-  // 2) иначе — только через Telegram Mini App (сервер сверяет твой Telegram ID)
-  const tg = window.Telegram && window.Telegram.WebApp;
-  if (!tg) { return '/admin.html'; }
-  const initData = tg.initData || '';
-  if (!initData) return '/admin.html';
-  const res = await fetch(API + '/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData }) });
-  const data = await res.json().catch(()=>({}));
-  if (res.status === 200 && data.token) { token = data.token; localStorage.setItem('admin_token', token); return null; }
-  return '/admin.html'; // не админ
-}
-
 async function req(path,opts={}){
   const url=API+path;
-  const res=await fetch(url,{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},...opts});
-  if(res.status===401){ showLogin(); return {status:401,data:{}}; }
+  const res=await fetch(url,{headers:{'Content-Type':'application/json'},...opts});
   return {status:res.status,data:await res.json().catch(()=>({}))};
 }
-
-function showLogin() { location.href='/admin.html'; }
 
 function toLocale(v){return Number(v).toLocaleString('ru-RU')}
 
@@ -245,12 +222,8 @@ async function del(code){
 }
 
 // события
-// проверяем право доступа (твой Telegram ID) и грузим список
-(async function initAdmin(){
-  const deny = await adminAuth();
-  if (deny) { document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#f87171">🚫 Доступ запрещён. Эта панель открывается только администраторам из Telegram.</div>'; return; }
-  loadCodes();
-})();
+// грузим список кодов сразу (доступ открыт всем по ссылке)
+loadCodes();
 // авто-обновление статуса онлайна каждые 5 секунд
 setInterval(()=>{ loadCodes(); }, 5000);
 
