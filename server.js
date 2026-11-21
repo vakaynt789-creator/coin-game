@@ -36,24 +36,7 @@ function verifyInitData(initData) {
 // (пароль больше не используется — авторизация по Telegram ID)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin2026';
 
-// Telegram ID, которым разрешён доступ к админ-панели (по данным Mini App).
-const ALLOWED_ADMIN_IDS = (process.env.ALLOWED_ADMIN_IDS || '1497464101').split(',').map(s => s.trim()).filter(Boolean);
-
-// Вспомогательная функция: прочитать telegram_id из проверенных initData
-function tgIdFromInitData(initData) {
-  if (!verifyInitData(initData)) return null;
-  try {
-    const params = new URLSearchParams(initData);
-    const userRaw = params.get('user');
-    if (!userRaw) return null;
-    const user = JSON.parse(userRaw);
-    return String(user.id);
-  } catch (e) { return null; }
-}
-
-// Простой токен сессии (выдаётся после проверки Telegram ID)
-function makeAdminToken() { return crypto.randomBytes(24).toString('hex'); }
-let adminToken = null; // активируется при успешной авторизации
+// Внимание: доступ к админ-панели открыт всем по ссылке (по решению владельца).
 
 // Деньги храним целым числом в единицах 1e-8 (8 знаков после запятой).
 // 0.00000003  ->  3 единицы
@@ -175,27 +158,9 @@ function readBody(req, limit = 10000) {
 
 // ================= АПИ =================
 async function handleApi(req, res, url) {
-  // Админ-авторизация: проверка Telegram ID (из initData Mini App) -> выдаём токен
-  if (url.pathname === '/api/admin/login' && req.method === 'POST') {
-    const body = await readBody(req);
-    const tid = tgIdFromInitData(body.initData);
-    if (tid && ALLOWED_ADMIN_IDS.includes(String(tid))) {
-      adminToken = makeAdminToken();
-      return sendJson(res, 200, { ok: true, token: adminToken });
-    }
-    return sendJson(res, 403, { error: 'Доступ запрещён: ты не в списке администраторов' });
-  }
-
-  // Все остальные /api/admin/* требуют валидный токен
-  if (url.pathname.startsWith('/api/admin/')) {
-    if (url.pathname === '/api/admin/login') { /* уже обработано */ }
-    else {
-      const auth = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
-      if (!adminToken || auth !== adminToken) {
-        return sendJson(res, 401, { error: 'Нет доступа к панели' });
-      }
-    }
-  }
+  // Админ-панель открыта всем по ссылке (без пароля и без Telegram ID).
+  // Доступ к /api/admin/* не ограничивается — используется только для своей игры.
+  // Предупреждение: любой, кто узнает адрес /admin.html, сможет менять коды.
 
   // Вход по Telegram (Mini App): по telegram_id без ввода ника
   if (url.pathname === '/api/login-tg' && req.method === 'POST') {
@@ -272,7 +237,8 @@ async function handleApi(req, res, url) {
     });
   }
 
-  // Тап: увеличиваем баланс на базовой тап * буст (единицы)
+  // Тап: увеличиваем баланс на базовой тап * буст (единицы).
+  // count — число тапов за один запрос (клиент шлёт пачками, чтобы не было задержки).
   if (url.pathname === '/api/tap' && req.method === 'POST') {
     const body = await readBody(req);
     const code = sanitizeCode(body.code);
@@ -281,13 +247,17 @@ async function handleApi(req, res, url) {
     if (codeStatus(code) === 'prize') {
       return sendJson(res, 403, { error: 'Этот код получил приз и заблокирован' });
     }
+    let count = Math.floor(Number(body.count) || 0);
+    if (!isFinite(count) || count < 0) count = 0;
+    if (count === 0) count = 1; // если count не передан, считаем один тап
     const mult = Number(p.boost) || 1;
-    const gain = Math.round(TAP_INCREMENT * mult); // целые единицы
-    p.balance += gain;
-    p.taps++;
+    const gain = Math.round(TAP_INCREMENT * mult); // единицы за один тап
+    const totalGain = gain * count;
+    p.balance += totalGain;
+    p.taps += count;
     p.lastSeen = new Date().toISOString();
     saveDb();
-    return sendJson(res, 200, { ok: true, balance: fmt(p.balance), taps: p.taps, boost: mult, gain: fmt(gain) });
+    return sendJson(res, 200, { ok: true, balance: fmt(p.balance), taps: p.taps, boost: mult, gain: fmt(totalGain) });
   }
 
   // Текущий баланс/профиль
